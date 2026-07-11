@@ -1,0 +1,36 @@
+const express = require('express')
+const app = express()
+
+app.use(express.urlencoded({ extended: true }))
+app.use(express.json())
+let options = {
+    setHeaders: function (res, path, stat) {
+      res.set('Access-Control-Allow-Origin', '*')
+    }
+  }
+app.use(require('cors')())
+
+// 优先异步初始化内存数据库，成功后再挂载路由
+require('./plugins/db')(app).then(() => {
+    require('./routes/admin.js')(app) //用户管理
+    require('./routes/goods.js')(app) //商品及卡密管理
+    require('./routes/pay.js')(app)   //支付相关
+    require('./routes/lepay.js')(app)   //乐支付相关
+    require('./routes/order.js')(app)   //后台管理订单相关
+
+    require('./routes/web/goods.js')(app)   //前端商品相关
+    require('./routes/web/order.js')(app)   //前端订单相关
+
+    require('./plugins/cron')(app)//开启定时任务
+
+    app.set('secret', process.env.SECRET || 'ideey_faka_secret_key')
+
+    app.use('/uploads', express.static(__dirname + '/uploads',options))
+    app.use('/admin', express.static(__dirname + '/html/admin',options))
+
+    app.listen(8889,()=>{
+        console.log('后端服务启动于 http://127.0.0.1:8889')
+    })
+}).catch(err => {
+    console.error("数据库初始化失败:", err);
+});
